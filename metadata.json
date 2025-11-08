@@ -1,0 +1,5 @@
+{
+  "name": "Brand Identity Generator & Image Editor",
+  "description": "Generate a complete brand identity, including logos, color palettes, and font pairings, based on your company's mission. Then, use the integrated AI Image Editor to modify your assets with text prompts.",
+  "requestFramePermissions": []
+}
