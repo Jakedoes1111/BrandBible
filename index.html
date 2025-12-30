@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Brand Identity Generator</title>
+    <meta name="description" content="Generate complete brand identities, manage assets, and schedule social media posts with AI-powered tools" />
+    <meta name="theme-color" content="#10b981" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-192x192.png" />
+    <title>BrandBible - Brand Identity Generator Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,6 +16,13 @@
     <style>
       body {
         font-family: 'Inter', sans-serif;
+      }
+      .loading {
+        filter: blur(5px);
+        transition: filter 0.3s;
+      }
+      .loaded {
+        filter: blur(0);
       }
     </style>
   <script type="importmap">

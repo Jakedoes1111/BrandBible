@@ -1,22 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Spinner from './Spinner';
+import AssetUploader, { UploadedAsset } from './AssetUploader';
+import { assetStorage } from '../services/assetStorage';
 
 interface BrandInputFormProps {
-  onGenerate: (mission: string) => void;
+  onGenerate: (mission: string, uploadedAssets?: UploadedAsset[]) => void;
   isLoading: boolean;
 }
 
 const BrandInputForm: React.FC<BrandInputFormProps> = ({ onGenerate, isLoading }) => {
   const [mission, setMission] = useState('');
+  const [showAssetUpload, setShowAssetUpload] = useState(false);
+  const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
+  const [assetSummary, setAssetSummary] = useState({ total: 0, byType: {} as any });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Load existing assets on mount
+    assetStorage.getAssetSummary().then(setAssetSummary).catch(console.error);
+  }, []);
+
+  const handleAssetsUploaded = async (assets: UploadedAsset[]) => {
+    setUploadedAssets(assets);
+    try {
+      await assetStorage.saveAssets(assets);
+      const summary = await assetStorage.getAssetSummary();
+      setAssetSummary(summary);
+    } catch (error) {
+      console.error('Failed to save assets:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onGenerate(mission);
+    // Load all assets from storage before generating
+    const allAssets = await assetStorage.getAssets();
+    onGenerate(mission, allAssets);
   };
 
   return (
-    <div className="bg-black/30 backdrop-blur-sm border border-gray-700 p-6 rounded-lg shadow-2xl shadow-black/30 sticky top-8">
-      <h2 className="text-2xl font-bold mb-4 text-white">1. Your Mission</h2>
-      <p className="text-gray-300 mb-6">Describe your company's purpose, values, and what you aim to achieve. The more detail, the better the result.</p>
+    <div className="space-y-6">
+      {/* Asset Upload Section */}
+      <div className="bg-black/30 backdrop-blur-sm border border-gray-700 p-6 rounded-lg shadow-2xl shadow-black/30">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-white">0. Upload Brand Assets (Optional)</h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Upload existing logos, products, or marketing materials
+            </p>
+          </div>
+          <button
+            onClick={() => setShowAssetUpload(!showAssetUpload)}
+            className="text-green-400 hover:text-green-300 transition-colors"
+          >
+            {showAssetUpload ? '▼' : '▶'}
+          </button>
+        </div>
+
+        {assetSummary.total > 0 && !showAssetUpload && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-green-400">✓</span>
+              <span className="text-gray-300">
+                {assetSummary.total} asset{assetSummary.total !== 1 ? 's' : ''} uploaded
+                {assetSummary.byType?.logo && (
+                  <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs font-semibold">
+                    {assetSummary.byType.logo} Logo{assetSummary.byType.logo !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </span>
+              <button
+                onClick={() => setShowAssetUpload(true)}
+                className="text-blue-400 hover:text-blue-300 text-xs underline"
+              >
+                View/Edit
+              </button>
+            </div>
+            {assetSummary.byType?.logo && (
+              <div className="text-xs text-green-300 bg-green-900/20 px-3 py-2 rounded border border-green-500/30">
+                💡 Your uploaded logo{assetSummary.byType.logo !== 1 ? 's' : ''} will be used instead of generating new ones
+              </div>
+            )}
+          </div>
+        )}
+
+        {showAssetUpload && (
+          <div className="mt-4">
+            <AssetUploader
+              onAssetsUploaded={handleAssetsUploaded}
+              existingAssets={uploadedAssets}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Mission Input Section */}
+      <div className="bg-black/30 backdrop-blur-sm border border-gray-700 p-6 rounded-lg shadow-2xl shadow-black/30 sticky top-8">
+        <h2 className="text-2xl font-bold mb-4 text-white">1. Your Mission</h2>
+        <p className="text-gray-300 mb-6">Describe your company's purpose, values, and what you aim to achieve. The more detail, the better the result.</p>
       <form onSubmit={handleSubmit}>
         <textarea
           value={mission}
@@ -32,10 +112,7 @@ const BrandInputForm: React.FC<BrandInputFormProps> = ({ onGenerate, isLoading }
         >
           {isLoading ? (
             <>
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 80 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <Spinner className="-ml-1 mr-3 h-5 w-5 text-black" title="Generating brand bible" />
               Generating...
             </>
           ) : (
@@ -43,6 +120,7 @@ const BrandInputForm: React.FC<BrandInputFormProps> = ({ onGenerate, isLoading }
           )}
         </button>
       </form>
+      </div>
     </div>
   );
 };

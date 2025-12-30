@@ -1,0 +1,62 @@
+{
+  "name": "BrandBible - Brand Identity Generator Pro",
+  "short_name": "BrandBible",
+  "description": "Generate complete brand identities, manage assets, and schedule social media posts with AI-powered tools",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#10b981",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "design"],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Create Brand",
+      "short_name": "Create",
+      "description": "Generate a new brand identity",
+      "url": "/?action=create",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Asset Manager",
+      "short_name": "Assets",
+      "description": "Manage brand assets",
+      "url": "/?tab=assets",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Scheduler",
+      "short_name": "Schedule",
+      "description": "Schedule social media posts",
+      "url": "/?tab=scheduler",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

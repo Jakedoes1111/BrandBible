@@ -1,6 +1,6 @@
 // Advanced AI Service with multi-modal capabilities
 
-import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 
 export interface BrandArchetype {
   id: string;
@@ -78,15 +78,27 @@ export interface CompetitorAnalysis {
 }
 
 class AdvancedAIService {
-  private ai: GoogleGenAI;
+  private openai: OpenAI;
   
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable not set");
+      throw new Error("VITE_OPENAI_API_KEY environment variable not set");
     }
-    this.ai = new GoogleGenAI({ apiKey });
+    this.openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
   }
+
+  private safeParse = <T>(raw: string | undefined | null, fallback: T): T => {
+    if (!raw) return fallback;
+    const trimmed = raw.trim();
+    if (!trimmed) return fallback;
+    try {
+      return JSON.parse(trimmed) as T;
+    } catch (error) {
+      console.warn('Failed to parse structured JSON response. Returning fallback.', error);
+      return fallback;
+    }
+  };
 
   // Brand Archetypes
   private brandArchetypes: BrandArchetype[] = [
@@ -171,16 +183,24 @@ class AdvancedAIService {
       Return as structured JSON.
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: "gemini-1.5-pro",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-      }
+    const response = await this.openai.chat.completions.create({
+      model: "chatgpt-4o-latest",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2048,
+      response_format: { type: "json_object" }
     });
-    
-    return JSON.parse(response.text || '{}');
+
+    const fallback = {
+      brandNameSuggestions: [],
+      taglineOptions: [],
+      colorPalette: [],
+      fontPairings: [],
+      socialMediaPosts: [],
+      logoConcepts: []
+    };
+
+    return this.safeParse(response.choices[0]?.message?.content, fallback);
   }
 
   // Batch processing for multiple brand variations
@@ -218,22 +238,21 @@ class AdvancedAIService {
       Return as structured JSON with variations array.
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: "gemini-1.5-pro",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 1024,
-      }
+    const response = await this.openai.chat.completions.create({
+      model: "gpt-4o-mini-2024-07-18",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 1024,
+      response_format: { type: "json_object" }
     });
-    
-    const data = JSON.parse(response.text || '{}');
-    
+
+    const parsed = this.safeParse(response.choices[0]?.message?.content, { variations: [] });
+
     return {
       id: `copy_${Date.now()}`,
       platform,
       originalText,
-      variations: data.variations || []
+      variations: parsed.variations || []
     };
   }
 
@@ -288,25 +307,24 @@ class AdvancedAIService {
       Return as structured JSON.
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: "gemini-1.5-pro",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        temperature: 0.5,
-        maxOutputTokens: 1024,
-      }
+    const response = await this.openai.chat.completions.create({
+      model: "gpt-4o-mini-2024-07-18",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.5,
+      max_tokens: 1024,
+      response_format: { type: "json_object" }
     });
-    
-    const data = JSON.parse(response.text || '{}');
-    
+
+    const parsed = this.safeParse(response.choices[0]?.message?.content, {} as any);
+
     return {
       platform,
       contentType: content.visualUrl ? 'video' : 'image',
-      predictedLikes: data.predictedLikes || Math.floor(Math.random() * 5000) + 100,
-      predictedShares: data.predictedShares || Math.floor(Math.random() * 500) + 10,
-      predictedComments: data.predictedComments || Math.floor(Math.random() * 200) + 5,
-      confidence: data.confidence || Math.floor(Math.random() * 30) + 70,
-      suggestions: data.suggestions || ['Use trending hashtags', 'Post at optimal time', 'Include call-to-action']
+      predictedLikes: parsed.predictedLikes ?? Math.floor(Math.random() * 5000) + 100,
+      predictedShares: parsed.predictedShares ?? Math.floor(Math.random() * 500) + 10,
+      predictedComments: parsed.predictedComments ?? Math.floor(Math.random() * 200) + 5,
+      confidence: parsed.confidence ?? Math.floor(Math.random() * 30) + 70,
+      suggestions: parsed.suggestions ?? ['Use trending hashtags', 'Post at optimal time', 'Include call-to-action']
     };
   }
 
@@ -327,18 +345,24 @@ class AdvancedAIService {
       Return as structured JSON.
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: "gemini-1.5-pro",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-      }
+    const response = await this.openai.chat.completions.create({
+      model: "chatgpt-4o-latest",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2048,
+      response_format: { type: "json_object" }
     });
-    
-    const data = JSON.parse(response.text || '{}');
-    
-    return data;
+
+    const fallback: BrandGuidelines = {
+      logoUsage: "",
+      colorRules: [],
+      typography: "",
+      voice: "",
+      imagery: "",
+      doAndDont: { do: [], dont: [] }
+    };
+
+    return this.safeParse(response.choices[0]?.message?.content, fallback);
   }
 
   // Analyze competitors
@@ -357,18 +381,22 @@ class AdvancedAIService {
       Return as structured JSON.
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: "gemini-1.5-pro",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-      }
+    const response = await this.openai.chat.completions.create({
+      model: "chatgpt-4o-latest",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2048,
+      response_format: { type: "json_object" }
     });
-    
-    const data = JSON.parse(response.text || '{}');
-    
-    return data;
+
+    const fallback: CompetitorAnalysis = {
+      competitors: [],
+      opportunities: [],
+      threats: [],
+      recommendations: []
+    };
+
+    return this.safeParse(response.choices[0]?.message?.content, fallback);
   }
 
   // Get video templates

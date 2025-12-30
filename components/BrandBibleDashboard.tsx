@@ -75,21 +75,28 @@ const BrandBibleDashboard: React.FC<BrandBibleDashboardProps> = ({ brandIdentity
         </div>
       );
     }
-    if (brandIdentity && generatedImages) {
+    if (brandIdentity) {
       return (
         <div className="space-y-12">
            <div className="bg-black/20 p-6 rounded-lg border border-gray-700">
                 <h2 className="text-2xl font-bold mb-2 text-white">Brand Mission</h2>
                 <p className="text-gray-300 italic">"{mission}"</p>
             </div>
-          <LogoDisplay generatedImages={generatedImages} />
+          {generatedImages ? (
+            <LogoDisplay generatedImages={generatedImages} />
+          ) : (
+            <div className="bg-yellow-900/20 border border-yellow-500/40 text-yellow-100 p-6 rounded-lg">
+              <h3 className="text-lg font-semibold mb-2">Logo generation unavailable</h3>
+              <p className="text-sm text-yellow-200">We couldn't generate logos automatically (Imagen access may be restricted). You can still review the brand guidelines below.</p>
+            </div>
+          )}
           <ColorPalette colors={brandIdentity.colorPalette} />
           <FontPairings fontPairing={brandIdentity.fontPairings} />
           <SocialMediaTemplates 
             posts={brandIdentity.socialMediaPosts}
             colors={brandIdentity.colorPalette}
             fonts={brandIdentity.fontPairings}
-            logoUrl={generatedImages.primaryLogoUrl}
+            logoUrl={generatedImages?.primaryLogoUrl ?? ''}
             onVisualUpdate={onVisualUpdate}
           />
         </div>
