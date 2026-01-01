@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { oauthService } from '../services/oauthService';
 import Spinner from './Spinner';
+
+interface SocialAccount {
+  id: string;
+  platform: string;
+  username: string;
+  status: 'connected' | 'disconnected';
+  connectedAt?: string;
+}
 
 interface ScheduledPost {
   id: string;
@@ -34,6 +41,9 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
   const [recurringCount, setRecurringCount] = useState(4);
   const [isScheduling, setIsScheduling] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [connectedAccounts, setConnectedAccounts] = useState<SocialAccount[]>([]);
+
+  const socialApiBase = 'http://localhost:3001/api/social';
 
   const platforms = [
     { id: 'instagram', name: 'Instagram', icon: '📷' },
@@ -43,8 +53,19 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
     { id: 'tiktok', name: 'TikTok', icon: '🎵' }
   ];
 
+  const platformApiNameMap: Record<string, string> = {
+    instagram: 'Instagram',
+    twitter: 'Twitter',
+    linkedin: 'LinkedIn',
+    facebook: 'Facebook',
+    tiktok: 'TikTok'
+  };
+
+  const getApiPlatformName = (platformId: string) => platformApiNameMap[platformId] ?? platformId;
+
   useEffect(() => {
     loadScheduledPosts();
+    fetchConnectedAccounts();
     setupScheduler();
     
     // Load sample content if none provided
@@ -70,6 +91,20 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
       setSelectedContent(availableContent);
     }
   }, []);
+
+  const fetchConnectedAccounts = async (): Promise<SocialAccount[]> => {
+    try {
+      const res = await fetch(`${socialApiBase}/accounts`);
+      if (res.ok) {
+        const data = await res.json();
+        setConnectedAccounts(data);
+        return data;
+      }
+    } catch (error) {
+      console.error('Failed to fetch connected accounts:', error);
+    }
+    return [];
+  };
 
   const loadScheduledPosts = () => {
     const stored = localStorage.getItem('scheduled_posts');
@@ -106,12 +141,32 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
 
     for (const post of postsToCheck) {
       try {
-        if (!oauthService.isConnected(post.platform)) {
-          updatePostStatus(post.id, 'failed', `${post.platform} is not connected`);
+        const latestAccounts = await fetchConnectedAccounts();
+        const platformConfig = platforms.find(platform => platform.id === post.platform);
+        const apiPlatform = getApiPlatformName(post.platform);
+        const isConnected = latestAccounts.some(account => account.platform === apiPlatform);
+
+        if (!isConnected) {
+          updatePostStatus(post.id, 'failed', `${platformConfig?.name ?? post.platform} is not connected`);
           continue;
         }
 
-        const result = await oauthService.postToPlatform(post.platform, post.content);
+        const response = await fetch(`${socialApiBase}/publish`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            platform: apiPlatform,
+            content: post.content.caption,
+            image: post.content.imageUrl ?? post.content.videoUrl
+          })
+        });
+
+        if (!response.ok) {
+          const errorBody = await response.json().catch(() => ({}));
+          throw new Error(errorBody.error || response.statusText);
+        }
+
+        const result = await response.json();
         updatePostStatus(post.id, 'posted', undefined, result);
       } catch (error: any) {
         updatePostStatus(post.id, 'failed', error.message);
@@ -313,7 +368,7 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
           <h5 className="text-sm font-medium text-gray-300 mb-2">Select Platforms</h5>
           <div className="flex flex-wrap gap-2">
             {platforms.map(platform => {
-              const isConnected = oauthService.isConnected(platform.id);
+              const isConnected = connectedAccounts.some(account => account.platform === getApiPlatformName(platform.id));
               const isSelected = selectedPlatforms.includes(platform.id);
               
               return (
