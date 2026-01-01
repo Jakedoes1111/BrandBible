@@ -46,12 +46,22 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
   const socialApiBase = 'http://localhost:3001/api/social';
 
   const platforms = [
-    { id: 'instagram', name: 'Instagram', icon: '📷', apiName: 'Instagram' },
-    { id: 'twitter', name: 'Twitter/X', icon: '🐦', apiName: 'Twitter' },
-    { id: 'linkedin', name: 'LinkedIn', icon: '💼', apiName: 'LinkedIn' },
-    { id: 'facebook', name: 'Facebook', icon: '👍', apiName: 'Facebook' },
-    { id: 'tiktok', name: 'TikTok', icon: '🎵', apiName: 'TikTok' }
+    { id: 'instagram', name: 'Instagram', icon: '📷' },
+    { id: 'twitter', name: 'Twitter/X', icon: '🐦' },
+    { id: 'linkedin', name: 'LinkedIn', icon: '💼' },
+    { id: 'facebook', name: 'Facebook', icon: '👍' },
+    { id: 'tiktok', name: 'TikTok', icon: '🎵' }
   ];
+
+  const platformApiNameMap: Record<string, string> = {
+    instagram: 'Instagram',
+    twitter: 'Twitter',
+    linkedin: 'LinkedIn',
+    facebook: 'Facebook',
+    tiktok: 'TikTok'
+  };
+
+  const getApiPlatformName = (platformId: string) => platformApiNameMap[platformId] ?? platformId;
 
   useEffect(() => {
     loadScheduledPosts();
@@ -133,7 +143,7 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
       try {
         const latestAccounts = await fetchConnectedAccounts();
         const platformConfig = platforms.find(platform => platform.id === post.platform);
-        const apiPlatform = platformConfig?.apiName ?? post.platform;
+        const apiPlatform = getApiPlatformName(post.platform);
         const isConnected = latestAccounts.some(account => account.platform === apiPlatform);
 
         if (!isConnected) {
@@ -358,7 +368,7 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
           <h5 className="text-sm font-medium text-gray-300 mb-2">Select Platforms</h5>
           <div className="flex flex-wrap gap-2">
             {platforms.map(platform => {
-              const isConnected = connectedAccounts.some(account => account.platform === platform.apiName);
+              const isConnected = connectedAccounts.some(account => account.platform === getApiPlatformName(platform.id));
               const isSelected = selectedPlatforms.includes(platform.id);
               
               return (
