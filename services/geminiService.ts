@@ -216,7 +216,7 @@ export const chatWithBot = async (history: ChatMessage[], newMessage: string): P
         const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
             { role: 'system', content: "You are a friendly and helpful branding assistant. The user is creating a brand identity. You can answer questions about colors, fonts, marketing, and design principles." },
             ...history.map(msg => ({
-                role: msg.role as 'user' | 'assistant',
+                role: (msg.role === 'model' ? 'assistant' : msg.role) as 'user' | 'assistant',
                 content: msg.content
             })),
             { role: 'user', content: validatedMessage }
