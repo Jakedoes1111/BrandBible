@@ -1,29 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { oauthService } from '../services/oauthService';
 import Spinner from './Spinner';
+import { contentStorage, ScheduledPost as StoredScheduledPost } from '../services/contentStorage';
 
-interface ScheduledPost {
-  id: string;
-  platform: string;
-  content: {
-    caption: string;
-    imageUrl?: string;
-    videoUrl?: string;
-    visualType?: 'image' | 'video';
-  };
-  scheduledTime: Date;
-  status: 'scheduled' | 'posted' | 'failed' | 'cancelled';
+type SchedulerPost = StoredScheduledPost & {
   result?: any;
   error?: string;
-  createdAt: Date;
-}
+  caption?: string;
+};
 
 interface ContentSchedulerProps {
   availableContent?: any[];
 }
 
 const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = [] }) => {
-  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
+  const [scheduledPosts, setScheduledPosts] = useState<SchedulerPost[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedContent, setSelectedContent] = useState<any[]>([]);
   const [scheduleMode, setScheduleMode] = useState<'single' | 'recurring'>('single');
@@ -45,8 +36,8 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
 
   useEffect(() => {
     loadScheduledPosts();
-    setupScheduler();
-    
+    const cleanupScheduler = setupScheduler();
+
     // Load sample content if none provided
     if (availableContent.length === 0) {
       const sampleContent = [
@@ -69,39 +60,48 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
     } else {
       setSelectedContent(availableContent);
     }
+
+    return cleanupScheduler;
   }, []);
 
-  const loadScheduledPosts = () => {
-    const stored = localStorage.getItem('scheduled_posts');
-    if (stored) {
-      const posts = JSON.parse(stored);
-      setScheduledPosts(posts.map((post: ScheduledPost) => ({
-        ...post,
-        scheduledTime: new Date(post.scheduledTime),
-        createdAt: new Date(post.createdAt)
-      })));
-    }
+  const normalizePostDates = (post: SchedulerPost): SchedulerPost => ({
+    ...post,
+    scheduledDate: post.scheduledDate instanceof Date ? post.scheduledDate : new Date(post.scheduledDate),
+    date: post.date instanceof Date ? post.date : new Date(post.date)
+  });
+
+  const loadScheduledPosts = async () => {
+    const posts = await contentStorage.getPosts();
+    setScheduledPosts(posts.map(normalizePostDates));
   };
 
-  const saveScheduledPosts = (posts: ScheduledPost[]) => {
-    localStorage.setItem('scheduled_posts', JSON.stringify(posts));
+  const saveScheduledPosts = async (posts: SchedulerPost[]) => {
+    await contentStorage.savePosts(posts);
   };
 
   const setupScheduler = () => {
     // Check for posts that need to be posted every minute
-    setInterval(() => {
+    const intervalId = window.setInterval(() => {
       checkAndPostScheduledContent();
     }, 60000);
 
     // Check immediately on load
     checkAndPostScheduledContent();
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   };
 
   const checkAndPostScheduledContent = async () => {
     const now = new Date();
-    const postsToCheck = scheduledPosts.filter(post => 
-      post.status === 'scheduled' && 
-      new Date(post.scheduledTime) <= now
+    const storedPosts = await contentStorage.getPosts();
+    const normalizedPosts = storedPosts.map(normalizePostDates);
+    setScheduledPosts(normalizedPosts);
+
+    const postsToCheck = normalizedPosts.filter(post =>
+      post.status === 'scheduled' &&
+      post.scheduledDate <= now
     );
 
     for (const post of postsToCheck) {
@@ -111,24 +111,27 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
           continue;
         }
 
-        const result = await oauthService.postToPlatform(post.platform, post.content);
-        updatePostStatus(post.id, 'posted', undefined, result);
+        const result = await oauthService.postToPlatform(post.platform, {
+          caption: post.caption || `${post.headline}\n\n${post.body}`,
+          imageUrl: post.visualType === 'image' ? post.visualUrl : undefined,
+          videoUrl: post.visualType === 'video' ? post.visualUrl : undefined,
+          visualType: post.visualType
+        });
+        updatePostStatus(post.id, 'published', undefined, result);
       } catch (error: any) {
         updatePostStatus(post.id, 'failed', error.message);
       }
     }
   };
 
-  const updatePostStatus = (postId: string, status: ScheduledPost['status'], error?: string, result?: any) => {
-    setScheduledPosts(prev => prev.map(post => 
-      post.id === postId ? { ...post, status, error, result } : post
-    ));
-    
-    // Update localStorage
-    const updated = scheduledPosts.map(post => 
-      post.id === postId ? { ...post, status, error, result } : post
-    );
-    saveScheduledPosts(updated);
+  const updatePostStatus = (postId: string, status: SchedulerPost['status'], error?: string, result?: any) => {
+    setScheduledPosts(prev => {
+      const updated = prev.map(post =>
+        post.id === postId ? { ...post, status, error, result } : post
+      );
+      void saveScheduledPosts(updated);
+      return updated;
+    });
   };
 
   const handlePlatformToggle = (platformId: string) => {
@@ -187,26 +190,34 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
     }
 
     setIsScheduling(true);
-    const newPosts: ScheduledPost[] = [];
+    const newPosts: SchedulerPost[] = [];
     const baseDate = new Date(`${scheduleDate}T${scheduleTime}`);
+
+    const buildPost = (content: any, platform: string, scheduledDate: Date): SchedulerPost => ({
+      id: `${content.id}-${platform}-${Date.now()}-${scheduledDate.getTime()}`,
+      platform,
+      contentType: content.contentType || 'promotional',
+      headline: content.headline,
+      body: content.body,
+      hashtags: content.hashtags || [],
+      imagePrompt: content.imagePrompt || content.headline,
+      visualUrl: content.visualUrl,
+      visualType: content.visualType,
+      callToAction: content.callToAction,
+      caption: customMessage || `${content.headline}\n\n${content.body}`,
+      scheduledTime: scheduleTime,
+      scheduledDate,
+      date: scheduledDate,
+      status: 'scheduled'
+    });
 
     if (scheduleMode === 'single') {
       // Single post
       selectedContent.forEach(content => {
         selectedPlatforms.forEach(platform => {
-          newPosts.push({
-            id: `${content.id}-${platform}-${Date.now()}`,
-            platform,
-            content: {
-              caption: customMessage || `${content.headline}\n\n${content.body}`,
-              imageUrl: content.visualType === 'image' ? content.visualUrl : undefined,
-              videoUrl: content.visualType === 'video' ? content.visualUrl : undefined,
-              visualType: content.visualType
-            },
-            scheduledTime: baseDate,
-            status: 'scheduled',
-            createdAt: new Date()
-          });
+          const scheduledDate = new Date(baseDate);
+          const post = buildPost(content, platform, scheduledDate);
+          newPosts.push(post);
         });
       });
     } else {
@@ -216,27 +227,18 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
       dates.forEach(date => {
         selectedContent.forEach(content => {
           selectedPlatforms.forEach(platform => {
-            newPosts.push({
-              id: `${content.id}-${platform}-${Date.now()}-${date.getTime()}`,
-              platform,
-              content: {
-                caption: customMessage || `${content.headline}\n\n${content.body}`,
-                imageUrl: content.visualType === 'image' ? content.visualUrl : undefined,
-                videoUrl: content.visualType === 'video' ? content.visualUrl : undefined,
-                visualType: content.visualType
-              },
-              scheduledTime: date,
-              status: 'scheduled',
-              createdAt: new Date()
-            });
+            const post = buildPost(content, platform, date);
+            newPosts.push(post);
           });
         });
       });
     }
 
-    const updatedPosts = [...scheduledPosts, ...newPosts];
-    setScheduledPosts(updatedPosts);
-    saveScheduledPosts(updatedPosts);
+    setScheduledPosts(prev => {
+      const updatedPosts = [...prev, ...newPosts];
+      void saveScheduledPosts(updatedPosts);
+      return updatedPosts;
+    });
     setIsScheduling(false);
 
     // Reset form
@@ -251,18 +253,29 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
   };
 
   const handleReschedulePost = (postId: string, newDate: string, newTime: string) => {
-    const post = scheduledPosts.find(p => p.id === postId);
-    if (post) {
-      const updatedPost = { ...post, scheduledTime: new Date(`${newDate}T${newTime}`), status: 'scheduled' as const };
-      setScheduledPosts(prev => prev.map(p => p.id === postId ? updatedPost : p));
-      saveScheduledPosts(scheduledPosts.map(p => p.id === postId ? updatedPost : p));
-    }
+    setScheduledPosts(prev => {
+      const updatedPosts = prev.map(post => {
+        if (post.id !== postId) return post;
+        const rescheduledDate = new Date(`${newDate}T${newTime}`);
+        return {
+          ...post,
+          scheduledDate: rescheduledDate,
+          date: rescheduledDate,
+          scheduledTime: newTime,
+          status: 'scheduled'
+        };
+      });
+      void saveScheduledPosts(updatedPosts);
+      return updatedPosts;
+    });
   };
 
   const handleDeletePost = (postId: string) => {
-    const updated = scheduledPosts.filter(post => post.id !== postId);
-    setScheduledPosts(updated);
-    saveScheduledPosts(updated);
+    setScheduledPosts(prev => {
+      const updated = prev.filter(post => post.id !== postId);
+      void saveScheduledPosts(updated);
+      return updated;
+    });
   };
 
   const getFilteredPosts = () => {
@@ -277,7 +290,7 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'posted': return 'text-green-400';
+      case 'published': return 'text-green-400';
       case 'scheduled': return 'text-blue-400';
       case 'failed': return 'text-red-400';
       case 'cancelled': return 'text-gray-400';
@@ -287,7 +300,7 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'posted': return '✅';
+      case 'published': return '✅';
       case 'scheduled': return '⏰';
       case 'failed': return '❌';
       case 'cancelled': return '🚫';
@@ -472,7 +485,7 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
           >
             <option value="all">All Posts</option>
             <option value="scheduled">Scheduled</option>
-            <option value="posted">Posted</option>
+            <option value="published">Published</option>
             <option value="failed">Failed</option>
             <option value="cancelled">Cancelled</option>
           </select>
@@ -507,7 +520,7 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
                         </span>
                       </div>
                       <div className="text-xs text-gray-400">
-                        Scheduled for {post.scheduledTime.toLocaleString()}
+                        Scheduled for {post.scheduledDate.toLocaleString()}
                       </div>
                       {post.error && (
                         <div className="text-xs text-red-400 mt-1">

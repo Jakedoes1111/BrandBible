@@ -7,7 +7,7 @@ const DB_VERSION = 1;
 
 export interface ScheduledPost extends GeneratedPost {
     scheduledDate: Date;
-    status: 'scheduled' | 'published' | 'failed';
+    status: 'scheduled' | 'published' | 'failed' | 'cancelled';
 }
 
 interface ContentDB extends DBSchema {
