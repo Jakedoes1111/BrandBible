@@ -47,6 +47,7 @@ type AppAction =
   | { type: 'INCREMENT_API_REQUESTS' }
   | { type: 'DECREMENT_API_REQUESTS' }
   | { type: 'CACHE_SET'; payload: { key: string; data: any; expiresIn: number } }
+  | { type: 'CACHE_DELETE'; payload: { key: string } }
   | { type: 'CACHE_CLEAR' }
   | { type: 'RESET_STATE' };
 
@@ -140,6 +141,11 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         expiresIn: action.payload.expiresIn,
       });
       return { ...state, cache: newCache };
+
+    case 'CACHE_DELETE':
+      const trimmedCache = new Map(state.cache);
+      trimmedCache.delete(action.payload.key);
+      return { ...state, cache: trimmedCache };
     
     case 'CACHE_CLEAR':
       return { ...state, cache: new Map() };
@@ -225,9 +231,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       
       const isExpired = Date.now() - entry.timestamp > entry.expiresIn;
       if (isExpired) {
-        const newCache = new Map(state.cache);
-        newCache.delete(key);
-        dispatch({ type: 'CACHE_CLEAR' });
+        dispatch({ type: 'CACHE_DELETE', payload: { key } });
         return null;
       }
       

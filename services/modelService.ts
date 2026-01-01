@@ -153,6 +153,20 @@ export async function generateWithFallback(
 }
 
 /**
+ * Check if a model is configured and available for use.
+ */
+export async function checkModelHealth(modelName: string): Promise<boolean> {
+  return isModelAvailable(modelName);
+}
+
+/**
+ * Get model configuration stats for monitoring.
+ */
+export function getModelStats(modelName: string) {
+  return getModelConfig(modelName);
+}
+
+/**
  * Get recommended model for a task based on current conditions
  */
 export function getRecommendedModel(
