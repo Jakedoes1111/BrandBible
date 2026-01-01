@@ -331,7 +331,8 @@ class OAuthService {
     const mediaResponse = await fetch(`${apiUrl}/${account.userId}/media`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         image_url: content.imageUrl,
@@ -346,7 +347,8 @@ class OAuthService {
     const publishResponse = await fetch(`${apiUrl}/${account.userId}/media_publish`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         creation_id: mediaData.id
@@ -366,7 +368,8 @@ class OAuthService {
       const mediaResponse = await fetch(`${apiUrl}/media/upload`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           media: content.imageUrl
@@ -394,7 +397,7 @@ class OAuthService {
     
     const postData: any = {
       author: `urn:li:person:${account.userId}`,
-      lifecycleState: 'pUBLISHED',
+      lifecycleState: 'PUBLISHED',
       specificContent: {
         'com.linkedin.ugc.ShareContent': {
           shareCommentary: {
@@ -450,7 +453,8 @@ class OAuthService {
     const response = await fetch(`${apiUrl}/${account.userId}/feed`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(postData)
     });
