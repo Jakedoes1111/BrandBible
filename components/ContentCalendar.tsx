@@ -6,7 +6,7 @@ import { contentStorage, ScheduledPost } from '../services/contentStorage';
 import { performanceStorage, PerformanceMetrics } from '../services/performanceStorage';
 
 interface ContentCalendarProps {
-  onPostClick?: (post: ScheduledPost) => void;
+  onPostScheduled?: (post: ScheduledPost) => void;
 }
 
 const SortablePost = ({ post, onClick }: { post: ScheduledPost; onClick?: () => void }) => {
@@ -44,7 +44,7 @@ const SortablePost = ({ post, onClick }: { post: ScheduledPost; onClick?: () => 
   );
 };
 
-const ContentCalendar: React.FC<ContentCalendarProps> = ({ onPostClick }) => {
+const ContentCalendar: React.FC<ContentCalendarProps> = ({ onPostScheduled }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [posts, setPosts] = useState<ScheduledPost[]>([]);
   const [view, setView] = useState<'month' | 'week'>('month');
@@ -249,7 +249,7 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({ onPostClick }) => {
                   {getPostsForDay(date).map(post => (
                     <div key={post.id} className="relative group">
                       <div
-                        onClick={() => onPostClick?.(post)}
+                        onClick={() => onPostScheduled?.(post)}
                         className={`p-1.5 rounded text-xs text-white cursor-pointer hover:opacity-80 truncate ${post.platform.toLowerCase().includes('instagram') ? 'bg-pink-600' :
                           post.platform.toLowerCase().includes('tiktok') ? 'bg-black border border-gray-700' :
                             post.platform.toLowerCase().includes('linkedin') ? 'bg-blue-700' :
