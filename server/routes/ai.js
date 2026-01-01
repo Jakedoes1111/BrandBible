@@ -49,7 +49,7 @@ router.post('/generate-image', async (req, res) => {
             n,
         });
 
-        res.json(response);
+        res.json({ content: response.choices?.[0]?.message?.content ?? '' });
     } catch (error) {
         console.error('Error in /generate-image:', error);
         res.status(500).json({ error: error.message || 'Failed to generate image' });
