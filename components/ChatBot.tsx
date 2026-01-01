@@ -5,7 +5,7 @@ import { chatWithBot } from '../services/geminiService';
 const ChatBot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', content: "Hi! How can I help you with your branding today?" }
+    { role: 'assistant', content: "Hi! How can I help you with your branding today?" }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,16 +22,17 @@ const ChatBot: React.FC = () => {
     if (!currentMessage.trim() || isLoading) return;
 
     const userMessage: ChatMessage = { role: 'user', content: currentMessage };
-    setMessages(prev => [...prev, userMessage]);
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setCurrentMessage('');
     setIsLoading(true);
 
     try {
-      const botResponse = await chatWithBot(messages, currentMessage);
-      setMessages(prev => [...prev, { role: 'model', content: botResponse }]);
+      const botResponse = await chatWithBot(nextMessages, currentMessage);
+      setMessages(prev => [...prev, { role: 'assistant', content: botResponse }]);
     } catch (error) {
       console.error("Chatbot error:", error);
-      setMessages(prev => [...prev, { role: 'model', content: "Sorry, I'm having trouble connecting. Please try again." }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I'm having trouble connecting. Please try again." }]);
     } finally {
       setIsLoading(false);
     }
