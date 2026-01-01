@@ -93,8 +93,7 @@ const ContentScheduler: React.FC<ContentSchedulerProps> = ({ availableContent = 
     } catch (error) {
       console.error('Failed to fetch connected accounts:', error);
     }
-
-    return connectedAccounts;
+    return [];
   };
 
   const loadScheduledPosts = () => {
