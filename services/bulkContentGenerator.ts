@@ -234,7 +234,7 @@ export class BulkContentGenerator {
         prompt: prompt,
         config: {
           temperature: 0.8,
-          maxOutputTokens: 4096,
+          max_tokens: 4096,
         },
       });
 
@@ -452,9 +452,13 @@ export function exportCampaignToCSV(campaign: BulkContentCampaign): string {
 
 export function groupPostsByWeek(posts: GeneratedPost[]): Map<number, GeneratedPost[]> {
   const weeks = new Map<number, GeneratedPost[]>();
+  if (posts.length === 0) {
+    return weeks;
+  }
+  const startDate = posts[0].date.getTime();
 
   posts.forEach(post => {
-    const weekNumber = Math.floor((post.date.getTime() - posts[0].date.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const weekNumber = Math.floor((post.date.getTime() - startDate) / (7 * 24 * 60 * 60 * 1000));
     if (!weeks.has(weekNumber)) {
       weeks.set(weekNumber, []);
     }
