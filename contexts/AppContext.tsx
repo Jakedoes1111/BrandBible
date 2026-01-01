@@ -8,7 +8,7 @@ export interface AppState {
   isLoading: boolean;
   error: string | null;
   mission: string;
-  activeTab: 'bible' | 'templates' | 'styleguide' | 'bulkcontent' | 'brandhealth' | 'competitors' | 'hashtags' | 'editor' | 'batch' | 'copywriting' | 'video' | 'analytics' | 'calendar' | 'guidelines' | 'assets' | 'scheduler';
+  activeTab: 'bible' | 'templates' | 'styleguide' | 'bulkcontent' | 'brandhealth' | 'competitors' | 'hashtags' | 'editor' | 'batch' | 'copywriting' | 'video' | 'analytics' | 'calendar' | 'guidelines' | 'assets' | 'schedule' | 'performance' | 'insights' | 'accounts' | 'batchlogo';
   savedProjects: SavedProject[];
   currentProject: SavedProject | null;
   apiRequestsInProgress: number;

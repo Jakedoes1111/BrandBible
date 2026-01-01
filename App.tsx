@@ -54,15 +54,15 @@ function App() {
 
   const handleGenerate = async (missionStatement: string, uploadedAssets?: any[]) => {
     try {
-      await generateBrand(missionStatement, uploadedAssets);
+      const result = await generateBrand(missionStatement, uploadedAssets);
 
       // Auto-save project
       const project = {
         id: `project_${Date.now()}`,
         name: missionStatement.substring(0, 50),
         mission: missionStatement,
-        brandIdentity: state.brandIdentity!,
-        generatedImages: state.generatedImages,
+        brandIdentity: result.brandIdentity,
+        generatedImages: result.generatedImages,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -250,7 +250,7 @@ function App() {
               {/* Schedule Dropdown */}
               <DropdownButton label="Schedule" icon="📅" dropdownId="schedule">
                 <DropdownItem tabId="calendar" label="Content Calendar" icon="📅" />
-                <DropdownItem tabId="scheduler" label="Scheduler" icon="⏰" />
+                <DropdownItem tabId="schedule" label="Scheduler" icon="⏰" />
               </DropdownButton>
 
               {/* Analyze Dropdown */}
@@ -458,17 +458,6 @@ function App() {
             <SectionErrorBoundary sectionName="Content Scheduler">
               <ContentScheduler />
             </SectionErrorBoundary>
-          </main>
-        )}
-
-        {state.activeTab === 'editor' && (
-          <main className="bg-black/30 backdrop-blur-sm border border-gray-700 p-6 sm:p-8 rounded-b-lg shadow-2xl shadow-black/30">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">Image Editor</h2>
-              </div>
-              <ImageEditor />
-            </div>
           </main>
         )}
 
